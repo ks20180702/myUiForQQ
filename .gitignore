@@ -1,0 +1,9 @@
+.vscode
+bin
+build
+lib/*
+lib
+libs/*
+libs
+out
+.vs
