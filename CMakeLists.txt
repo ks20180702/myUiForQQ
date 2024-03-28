@@ -20,14 +20,31 @@ include(${CMAKE_CURRENT_LIST_DIR}/../clientQQ/src/myClient.cmake)
 
 #add_executable(${PROJECT_NAME} WIN32 ${SRC_FILES} )
 
+include_directories(./src/include)
+
+#将ui目录加入到ui搜索路径
+list(APPEND CMAKE_AUTOUIC_SEARCH_PATHS "ui")
+
+set(UI_FILE_LIST
+    ./ui/mainWindow.ui
+    ./ui/loginDialog.ui
+    ./ui/userChangeDialog.ui
+    )
+set(SRC_FILE_LIST
+    ./src/mainWindow.cpp
+    ./src/loginDialog.cpp
+    ./src/userChangeDialog.cpp
+    )
+set(H_FILE_LIST
+    ./src/include/mainWindow.h
+    ./src/include/loginDialog.h
+    ./src/include/userChangeDialog.h
+    )
 set(PROJECT_SOURCES
         main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
-        Logindialog.ui
-        Logindialog.cpp
-        Logindialog.h
+        ${UI_FILE_LIST}
+        ${SRC_FILE_LIST}
+        ${H_FILE_LIST}
         ${CLIENT}
 )
 

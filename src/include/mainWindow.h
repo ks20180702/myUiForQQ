@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 
+#include "clientQQ.h"
+
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -16,9 +18,11 @@ public:
 
     ~CMainWindow();
 
-    void run_client();
+    int recv_thread_init();
 
 private:
     Ui::MainWindow *ui;
+
+    std::shared_ptr<ClientQQ> _mainClientPtr;
 };
 #endif // MAINWINDOW_H
