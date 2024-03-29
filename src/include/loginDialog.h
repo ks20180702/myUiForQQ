@@ -31,6 +31,8 @@ private:
     std::shared_ptr<ClientQQ> _mainClientPtr;
 
     std::shared_ptr<CLoginCmd> _loginCmdPtr;
+
+
 };
 
 #endif // LOGINDIALOG_H

@@ -2,7 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <qDebug>
+#include <QAbstractItemModel>
 
 #include "clientQQ.h"
 
@@ -13,6 +13,12 @@ QT_END_NAMESPACE
 class CMainWindow : public QMainWindow
 {
     Q_OBJECT
+public:
+    enum MODEL_TYPE
+    {
+        FRIEND_INFO,
+        FRIEND_REQUEST
+    };
 
 public:
     CMainWindow(QWidget *parent = nullptr);
@@ -32,6 +38,8 @@ public:
      */
     int user_friends_init();
 
+    void change_list_view_model(MODEL_TYPE modelNum);
+
 private:
     Ui::MainWindow *ui;
 
@@ -46,5 +54,7 @@ private:
     std::vector<CUser> _requestUserLists;
     //未读消息列表
     std::vector<CMsg> _notRecvMsgsLists;
+
+    std::vector<QAbstractItemModel*> _treeViewModelLists;
 };
 #endif // MAINWINDOW_H

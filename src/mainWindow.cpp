@@ -11,6 +11,11 @@
 #include "qt_clip.h"
 
 #include <QMessageBox>
+#include <QStandardItemModel>
+#include <QStringListModel>
+#include <QVariant>
+#include <QPushButton>
+#include <qDebug>
 
 CMainWindow::CMainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -22,21 +27,30 @@ CMainWindow::CMainWindow(QWidget *parent)
     ui->setupUi(this);
 
     //初始化登录界面，并进行验证
-    CLoginDialog loginDig(nullptr);
-    loginDig.setWindowTitle(_Q_U("请输入账号密码"));
-    loginDig.set_main_client_ptr(_mainClientPtr);
-    loginDig.exec();
-    std::shared_ptr<CLoginCmd> loginCmdPtr=loginDig.get_login_cmd_ptr();
-    loginCmdPtr->show_do_command_info();
-    _currentUser=loginCmdPtr->get_login_user();
-    _friendLists=loginCmdPtr->get_friend_lists();
-    _notRecvMsgsLists=loginCmdPtr->get_not_recv_msg_lists();
+//    CLoginDialog loginDig(nullptr);
+//    loginDig.setWindowTitle(_Q_U("请输入账号密码"));
+//    loginDig.set_main_client_ptr(_mainClientPtr);
+//    loginDig.exec();
+//    std::shared_ptr<CLoginCmd> loginCmdPtr=loginDig.get_login_cmd_ptr();
+//    loginCmdPtr->show_do_command_info();
+//    _currentUser=loginCmdPtr->get_login_user();
+//    _friendLists=loginCmdPtr->get_friend_lists();
+//    _notRecvMsgsLists=loginCmdPtr->get_not_recv_msg_lists();
 
-    //启动心跳发送线程
-    _mainClientPtr->heart_thread_init(_currentUser);
+//    //启动心跳发送线程
+//    _mainClientPtr->heart_thread_init(_currentUser);
 
-    //启动指令处理线程(将接收到的指令数据更新到对应对象中)
-    deal_cmd_thread_init();
+//    //启动指令处理线程(将接收到的指令数据更新到对应对象中)
+//    deal_cmd_thread_init();
+
+    user_friends_init();
+
+    connect(ui->BtnUserFriendInfoView,&QPushButton::clicked,this,[&](){
+        change_list_view_model(FRIEND_INFO);
+    });
+    connect(ui->BtnFriendRequestView,&QPushButton::clicked,this,[&](){
+        change_list_view_model(FRIEND_REQUEST);
+    });
 }
 
 int CMainWindow::recv_thread_init()
@@ -108,6 +122,38 @@ void CMainWindow::thread_deal_recv_cmd()
     }
 }
 
+int CMainWindow::user_friends_init()
+{
+    ui->TreeViewFriendList->setHeaderHidden(true);
+    //好友列表信息模式
+    QStandardItemModel *modelFriendInfo = new QStandardItemModel(ui->TreeViewFriendList);
+
+    modelFriendInfo->setItem(0,0,new QStandardItem(_Q_U("好友")));
+    modelFriendInfo->item(0,0)->setChild(0,0,new QStandardItem(_Q_U("好友1")));
+    modelFriendInfo->item(0,0)->setChild(1,0,new QStandardItem(_Q_U("好友2")));
+    modelFriendInfo->setItem(1,0,new QStandardItem(_Q_U("家人")));
+    modelFriendInfo->item(1,0)->setChild(0,0,new QStandardItem(_Q_U("家人1")));
+
+    //好友申请模式
+    //可以考虑使用QAbstractListModel，自定义一个userListModel等
+    QStringListModel *modelFriendRequest=new QStringListModel(ui->TreeViewFriendList);
+
+    QStringList theStrList; //保存初始 StringList
+    theStrList<<_Q_U("北京")<<_Q_U("上海")<<_Q_U("天津"); //初始化 StringList
+    modelFriendRequest->setStringList(theStrList); //为模型设置StringList，会导入StringList的内容
+
+//    ui->listView->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
+    _treeViewModelLists.push_back((QAbstractItemModel*)modelFriendInfo);
+    _treeViewModelLists.push_back((QAbstractItemModel*)modelFriendRequest);
+
+    ui->TreeViewFriendList->setModel(_treeViewModelLists[0]);
+    return 0;
+}
+
+void CMainWindow::change_list_view_model(MODEL_TYPE modelNum)
+{
+    ui->TreeViewFriendList->setModel(_treeViewModelLists[modelNum]);
+}
 CMainWindow::~CMainWindow()
 {
     delete ui;
