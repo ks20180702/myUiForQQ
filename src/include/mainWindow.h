@@ -4,6 +4,8 @@
 #include <QMainWindow>
 #include <QAbstractItemModel>
 
+#include "friendConversationWidget.h"
+
 #include "clientQQ.h"
 
 QT_BEGIN_NAMESPACE
@@ -19,6 +21,11 @@ public:
         FRIEND_INFO,
         FRIEND_REQUEST
     };
+public slots:
+    void get_friend_info(const QModelIndex &index);
+
+    void test_close();
+
 
 public:
     CMainWindow(QWidget *parent = nullptr);
@@ -42,6 +49,8 @@ public:
 
 private:
     Ui::MainWindow *ui;
+
+    CFriendConversationWidget *_myConversation;
 
     std::shared_ptr<ClientQQ> _mainClientPtr;
 
