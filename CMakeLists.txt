@@ -29,16 +29,19 @@ set(UI_FILE_LIST
     ./ui/mainWindow.ui
     ./ui/loginDialog.ui
     ./ui/userChangeDialog.ui
+    ./ui/friendConversationWidget.ui
     )
 set(SRC_FILE_LIST
     ./src/mainWindow.cpp
     ./src/loginDialog.cpp
     ./src/userChangeDialog.cpp
+    ./src/friendConversationWidget.cpp
     )
 set(H_FILE_LIST
     ./src/include/mainWindow.h
     ./src/include/loginDialog.h
     ./src/include/userChangeDialog.h
+    ./src/include/friendConversationWidget.h
     )
 set(PROJECT_SOURCES
         main.cpp
