@@ -1,4 +1,4 @@
-#include "loginDialog.h"
+ï»¿#include "loginDialog.h"
 #include "./ui_loginDialog.h"
 
 #include "qt_clip.h"
@@ -33,7 +33,7 @@ void CLoginDialog::user_verify()
             QString accountValue=ui->LineEAccountValue->text();
             QString pwdValue=ui->LineEPwdValue->text();
 
-            //½«µÇÂ¼ÓÃ»§·¢ËÍµ½·şÎñÆ÷¶Ë
+            //å°†ç™»å½•ç”¨æˆ·å‘é€åˆ°æœåŠ¡å™¨ç«¯
             CUser loginUser(accountValue.toStdString(),pwdValue.toStdString());
             if(_mainClientPtr->send_login_cmd(loginUser)==-1)
             {
@@ -49,7 +49,7 @@ void CLoginDialog::user_verify()
             {
                 if((*itNow)->_childDoCommandReturn==false)
                 {
-                    QMessageBox::critical(this,_Q_U("´íÎó"),_Q_U("ÕËºÅÃÜÂë´íÎó"));
+                    QMessageBox::critical(this,_Q_U("é”™è¯¯"),_Q_U("è´¦å·å¯†ç é”™è¯¯"));
                     isWait=false;
                     ui->BtnOK->setEnabled(true);
                     break;
@@ -58,7 +58,8 @@ void CLoginDialog::user_verify()
                 break;
             }
         }
-        //½«µÇÂ¼Ö¸Áî¶ÔÏó¸³Öµ¸ø_loginCmdPtr£¬²¢½«¸ÃÌõÖ¸Áî´ÓclientÎ´´¦ÀílistµÄÉ¾³ı
+
+        //å°†ç™»å½•æŒ‡ä»¤å¯¹è±¡èµ‹å€¼ç»™_loginCmdPtrï¼Œå¹¶å°†è¯¥æ¡æŒ‡ä»¤ä»clientæœªå¤„ç†listçš„åˆ é™¤
         if(isSucceed)
         {
             _loginCmdPtr =std::dynamic_pointer_cast<CLoginCmd>(*(itNow));
@@ -66,7 +67,7 @@ void CLoginDialog::user_verify()
             close();
             return;
         }
-        //½ÓÊÕµ½ÁË´íÎóÏûÏ¢£¬Ò²ÍË³öÈ¥£¬µ«´°Ìå²»¹Ø
+        //æ¥æ”¶åˆ°äº†é”™è¯¯æ¶ˆæ¯ï¼Œä¹Ÿé€€å‡ºå»ï¼Œä½†çª—ä½“ä¸å…³
         if(isWait==false)
         {
             cmdPtrLists.erase(itNow);

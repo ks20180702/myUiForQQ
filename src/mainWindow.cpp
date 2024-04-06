@@ -38,6 +38,7 @@ CMainWindow::CMainWindow(QWidget *parent)
     loginDig.setWindowTitle(_Q_U("请输入账号密码"));
     loginDig.set_main_client_ptr(_mainClientPtr);
     loginDig.exec();
+    qDebug()<<"nihao";
     std::shared_ptr<CLoginCmd> loginCmdPtr=loginDig.get_login_cmd_ptr();
     loginCmdPtr->show_do_command_info();
     _currentUser=loginCmdPtr->get_login_user();
@@ -65,8 +66,8 @@ CMainWindow::CMainWindow(QWidget *parent)
 
     //初始化对话框
     _myConversation=new CFriendConversationWidget(nullptr);
-
-//    connect(_myConversation,SIGNAL(close_now()),this,SLOT(test_close()));
+    _myConversation->set_current_user(_currentUser);
+    _myConversation->set_main_client_ptr(_mainClientPtr);
 }
 
 int CMainWindow::recv_thread_init()
@@ -82,6 +83,7 @@ int CMainWindow::recv_thread_init()
     std::cout << _mainClientPtr->get_error() << std::endl;
 
     std::cout<<"recv thread is runing"<<std::endl;
+    return 0;
 }
 
 void CMainWindow::deal_cmd_thread_init()
@@ -96,13 +98,20 @@ void CMainWindow::thread_deal_recv_cmd()
     std::vector<std::list<std::shared_ptr<CmdBase>>::iterator> delIteratorLists;
     std::vector<std::list<std::shared_ptr<CmdBase>>::iterator>::iterator itDel;
     std::shared_ptr<CHeartRequestCmd> heartCmdPtr;
+    std::shared_ptr<CDataMsgCmd> dataMsgCmdPtr;
+
+    //对cmdPtrLists的互斥锁
+    std::unique_lock<std::mutex> cmdPtrlock(mtx);
+    cmdPtrlock.unlock();
+
     //5秒处理一次
     //只处理heartRequestCmd和dataMsgCmd
     //用户信息修改，需要等待是否修改成功，所以放在这里需要等比较久
     while(1)
     {
         Sleep(6000);
-        //这里需要上一个读锁
+
+        cmdPtrlock.lock();
         for( itNow=cmdPtrLists.begin();itNow!=cmdPtrLists.end();itNow++)
         {
             if((*itNow)->_childCmdType==CmdBase::HEART_CMD)
@@ -117,18 +126,19 @@ void CMainWindow::thread_deal_recv_cmd()
                 _friendLists=heartCmdPtr->get_friend_lists();
                 _requestUserLists=heartCmdPtr->get_friendship_request_lists();
                 delIteratorLists.push_back(itNow);
-//                user_friends_init();
+                user_friends_init();
             }
-//            else if((*itNow)->_childCmdType==CmdBase::DTAT_MSG_CMD)
-//            {
-//                if((*itNow)->_childDoCommandReturn==false)
-//                {
-//                    QMessageBox::critical(this,_Q_U("错误"),_Q_U("账号密码错误"));
-//                }
-//                break;
-//            }
+            else if((*itNow)->_childCmdType==CmdBase::DTAT_MSG_CMD)
+            {
+                if((*itNow)->_childDoCommandReturn==false)
+                {
+                    qDebug()<<"[E]  recv datamsg cmd have a error";
+                    continue;
+                }
+                dataMsgCmdPtr=std::dynamic_pointer_cast<CDataMsgCmd>(*(itNow));
+                dataMsgCmdPtr->get_msg_data().print();
+            }
         }
-        //这里加一个写锁，删除list中的数据
         for(itDel=delIteratorLists.begin();itDel!=delIteratorLists.end();itDel++)
         {
             cmdPtrLists.erase(*itDel);
@@ -137,6 +147,7 @@ void CMainWindow::thread_deal_recv_cmd()
         delIteratorLists.clear();
         itDel=delIteratorLists.begin();
 
+        cmdPtrlock.unlock();
         //当好友列表和好友申请有变化是，更新treeView
         Sleep(20000);
     }
@@ -146,6 +157,7 @@ int CMainWindow::user_friends_init()
 {
     QStandardItemModel *modelFriendInfo;
     QStringListModel *modelFriendRequest;
+    QStandardItem *friendRowLvOne;
 
     if(_treeViewModelLists.size()==0)
     {
@@ -153,6 +165,11 @@ int CMainWindow::user_friends_init()
         modelFriendRequest=new QStringListModel(ui->TreeViewFriendList);
         _treeViewModelLists.push_back((QAbstractItemModel*)modelFriendInfo);
         _treeViewModelLists.push_back((QAbstractItemModel*)modelFriendRequest);
+        //暂定只有一个分组，后面看情况增加
+        friendRowLvOne=new QStandardItem(_Q_U("好友"));
+        modelFriendInfo->appendRow(friendRowLvOne);
+        friendRowLvOne->setData(1);
+
         connect(ui->TreeViewFriendList, SIGNAL(clicked(QModelIndex)),
                 this,SLOT(get_friend_info(QModelIndex)));
     }
@@ -160,12 +177,10 @@ int CMainWindow::user_friends_init()
     {
         modelFriendInfo=(QStandardItemModel*)_treeViewModelLists[0];
         modelFriendRequest=(QStringListModel*)_treeViewModelLists[1];
+        friendRowLvOne->clearData();
     }
 
-    //暂定只有一个分组，后面看情况增加
-    QStandardItem *friendRowLvOne=new QStandardItem(_Q_U("好友"));
-    modelFriendInfo->appendRow(friendRowLvOne);
-    friendRowLvOne->setData(1);
+
 
     for(int i=0;i<_friendLists.size();i++)
     {
@@ -187,11 +202,6 @@ int CMainWindow::user_friends_init()
     return 0;
 }
 
-void CMainWindow::test_close()
-{
-    show();
-    _myConversation->hide();
-}
 void CMainWindow::change_list_view_model(MODEL_TYPE modelNum)
 {
     ui->TreeViewFriendList->setModel(_treeViewModelLists[modelNum]);
@@ -206,6 +216,7 @@ void CMainWindow::get_friend_info(const QModelIndex &index)
     if(levelNum<100)
     {
         ui->TreeViewFriendList->expand(index);
+        return;
     }
     else
     {
@@ -217,9 +228,9 @@ void CMainWindow::get_friend_info(const QModelIndex &index)
         qDebug()<<temp2->text(); //二级标题
     }
 
-//    this->hide();
+    CUser friendUser=_friendLists[irow];
+    _myConversation->set_friend_label_info(friendUser,true);
     _myConversation->show();
-
 }
 CMainWindow::~CMainWindow()
 {

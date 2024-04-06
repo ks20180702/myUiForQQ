@@ -1,4 +1,4 @@
-#ifndef LOGINDIALOG_H
+ï»¿#ifndef LOGINDIALOG_H
 #define LOGINDIALOG_H
 
 #include <QDialog>
@@ -20,7 +20,7 @@ public:
     explicit CLoginDialog(QWidget *parent = nullptr);
     ~CLoginDialog();
 
-    //ÉèÖÃ¿Í»§¶ËÇëÇóÖ¸Õë¶ÔÏó
+    //è®¾ç½®å®¢æˆ·ç«¯è¯·æ±‚æŒ‡é’ˆå¯¹è±¡
     void set_main_client_ptr(std::shared_ptr<ClientQQ> mainClientPtr);
 
     std::shared_ptr<CLoginCmd>& get_login_cmd_ptr();
