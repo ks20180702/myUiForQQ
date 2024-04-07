@@ -38,7 +38,6 @@ CMainWindow::CMainWindow(QWidget *parent)
     loginDig.setWindowTitle(_Q_U("请输入账号密码"));
     loginDig.set_main_client_ptr(_mainClientPtr);
     loginDig.exec();
-    qDebug()<<"nihao";
     std::shared_ptr<CLoginCmd> loginCmdPtr=loginDig.get_login_cmd_ptr();
     loginCmdPtr->show_do_command_info();
     _currentUser=loginCmdPtr->get_login_user();
@@ -101,17 +100,17 @@ void CMainWindow::thread_deal_recv_cmd()
     std::shared_ptr<CDataMsgCmd> dataMsgCmdPtr;
 
     //对cmdPtrLists的互斥锁
-    std::unique_lock<std::mutex> cmdPtrlock(mtx);
-    cmdPtrlock.unlock();
+    std::unique_lock<std::mutex> cmdPtrLock(mtx);
+    cmdPtrLock.unlock();
 
-    //5秒处理一次
+    //26秒处理一次
     //只处理heartRequestCmd和dataMsgCmd
     //用户信息修改，需要等待是否修改成功，所以放在这里需要等比较久
     while(1)
     {
         Sleep(6000);
 
-        cmdPtrlock.lock();
+        cmdPtrLock.lock();
         for( itNow=cmdPtrLists.begin();itNow!=cmdPtrLists.end();itNow++)
         {
             if((*itNow)->_childCmdType==CmdBase::HEART_CMD)
@@ -123,10 +122,17 @@ void CMainWindow::thread_deal_recv_cmd()
                 }
                 qDebug()<<"[I] get a new heart cmd";
                 heartCmdPtr =std::dynamic_pointer_cast<CHeartRequestCmd>(*(itNow));
+
+                //防止遍历的时候，突然修改好友列表
+                std::unique_lock<std::mutex> friendListsLock(mtxFriendLists);
                 _friendLists=heartCmdPtr->get_friend_lists();
                 _requestUserLists=heartCmdPtr->get_friendship_request_lists();
-                delIteratorLists.push_back(itNow);
+                friendListsLock.unlock();
+
                 user_friends_init();
+
+
+                delIteratorLists.push_back(itNow);
             }
             else if((*itNow)->_childCmdType==CmdBase::DTAT_MSG_CMD)
             {
@@ -147,7 +153,7 @@ void CMainWindow::thread_deal_recv_cmd()
         delIteratorLists.clear();
         itDel=delIteratorLists.begin();
 
-        cmdPtrlock.unlock();
+        cmdPtrLock.unlock();
         //当好友列表和好友申请有变化是，更新treeView
         Sleep(20000);
     }
@@ -177,11 +183,22 @@ int CMainWindow::user_friends_init()
     {
         modelFriendInfo=(QStandardItemModel*)_treeViewModelLists[0];
         modelFriendRequest=(QStringListModel*)_treeViewModelLists[1];
-        friendRowLvOne->clearData();
+
+        //删除所有子类数据和内存，重新赋值
+        friendRowLvOne=modelFriendInfo->item(0);
+        qDebug()<<friendRowLvOne->text();
+        friendRowLvOne->removeRows(0,friendRowLvOne->rowCount());
+        for(int i=0;i<friendRowLvOne->rowCount();i++)
+        {
+            QStandardItem* tempDelItem=friendRowLvOne->child(i);
+            if(tempDelItem)
+            {
+                delete tempDelItem;
+            }
+        }
     }
 
-
-
+    std::unique_lock<std::mutex> friendListsLock(mtxFriendLists);
     for(int i=0;i<_friendLists.size();i++)
     {
         QStandardItem *friendRow=new QStandardItem(_Q(_friendLists[i].get_name()));
@@ -198,6 +215,7 @@ int CMainWindow::user_friends_init()
         theStrList<<_Q(_requestUserLists[i].get_name());
     }
     modelFriendRequest->setStringList(theStrList); //为模型设置StringList，会导入StringList的内容
+    friendListsLock.unlock();
 
     return 0;
 }
@@ -218,15 +236,15 @@ void CMainWindow::get_friend_info(const QModelIndex &index)
         ui->TreeViewFriendList->expand(index);
         return;
     }
-    else
-    {
-        QStandardItemModel *model=static_cast<QStandardItemModel*>(ui->TreeViewFriendList->model());
-        QStandardItem *temp=model->item(static_cast<int>(levelNum/100)-1);
-
-        QStandardItem *temp2=temp->child(irow,icolumn);
-        qDebug()<<temp->text(); //一级标题
-        qDebug()<<temp2->text(); //二级标题
-    }
+//    //用于定位一级标题中二级标题的位置，发现若不分组，选的的行就是_friendLists[行]的对象，所以这里不需要
+//    else
+//    {
+//        QStandardItemModel *model=static_cast<QStandardItemModel*>(ui->TreeViewFriendList->model());
+//        QStandardItem *temp=model->item(static_cast<int>(levelNum/100)-1);
+//        QStandardItem *temp2=temp->child(irow,icolumn);
+//        qDebug()<<temp->text(); //一级标题
+//        qDebug()<<temp2->text(); //二级标题
+//    }
 
     CUser friendUser=_friendLists[irow];
     _myConversation->set_friend_label_info(friendUser,true);

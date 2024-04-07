@@ -55,7 +55,7 @@ private:
     //当前用户
     CUser _currentUser;
     //好友列表
-    //如果分多组的化(好友、家人)，应该外面再增加一个vector,这里暂时不弄
+    //如果分多组的化(好友、家人)，应该外面再增加一个vector,这里暂时
     std::vector<CUser> _friendLists;
     //好友请求列表
     std::vector<CUser> _requestUserLists;

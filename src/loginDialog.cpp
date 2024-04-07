@@ -30,6 +30,9 @@ void CLoginDialog::user_verify()
     {
         if(isWait==false)
         {
+            ui->BtnOK->setEnabled(false);
+            isWait=true;
+
             QString accountValue=ui->LineEAccountValue->text();
             QString pwdValue=ui->LineEPwdValue->text();
 
@@ -40,8 +43,6 @@ void CLoginDialog::user_verify()
                 std::cout << _mainClientPtr->get_error() << std::endl;
             }
             Sleep(1000);
-            isWait=true;
-            ui->BtnOK->setEnabled(false);
         }
         for( itNow=cmdPtrLists.begin();itNow!=cmdPtrLists.end();itNow++)
         {
