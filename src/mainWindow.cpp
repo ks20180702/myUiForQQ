@@ -45,7 +45,7 @@ CMainWindow::CMainWindow(QWidget *parent)
     _notRecvMsgsLists=loginCmdPtr->get_not_recv_msg_lists();
 
     //启动心跳发送线程
-    _mainClientPtr->heart_thread_init(_currentUser);
+//    _mainClientPtr->heart_thread_init(_currentUser);
 
     //启动指令处理线程(将接收到的指令数据更新到对应对象中)
     deal_cmd_thread_init();
@@ -108,13 +108,15 @@ void CMainWindow::thread_deal_recv_cmd()
     //用户信息修改，需要等待是否修改成功，所以放在这里需要等比较久
     while(1)
     {
-        Sleep(6000);
+        Sleep(3000);
 
         cmdPtrLock.lock();
         for( itNow=cmdPtrLists.begin();itNow!=cmdPtrLists.end();itNow++)
         {
             if((*itNow)->_childCmdType==CmdBase::HEART_CMD)
             {
+                delIteratorLists.push_back(itNow);
+
                 if((*itNow)->_childDoCommandReturn==false)
                 {
                     qDebug()<<"[E]  heart cmd return a error, pleace check";
@@ -131,18 +133,20 @@ void CMainWindow::thread_deal_recv_cmd()
 
                 user_friends_init();
 
-
-                delIteratorLists.push_back(itNow);
             }
             else if((*itNow)->_childCmdType==CmdBase::DTAT_MSG_CMD)
             {
+                delIteratorLists.push_back(itNow);
+
                 if((*itNow)->_childDoCommandReturn==false)
                 {
                     qDebug()<<"[E]  recv datamsg cmd have a error";
                     continue;
                 }
+                qDebug()<<"recv data";
                 dataMsgCmdPtr=std::dynamic_pointer_cast<CDataMsgCmd>(*(itNow));
                 dataMsgCmdPtr->get_msg_data().print();
+
             }
         }
         for(itDel=delIteratorLists.begin();itDel!=delIteratorLists.end();itDel++)
@@ -155,7 +159,7 @@ void CMainWindow::thread_deal_recv_cmd()
 
         cmdPtrLock.unlock();
         //当好友列表和好友申请有变化是，更新treeView
-        Sleep(20000);
+        Sleep(5000);
     }
 }
 
@@ -198,6 +202,7 @@ int CMainWindow::user_friends_init()
         }
     }
 
+    //加锁
     std::unique_lock<std::mutex> friendListsLock(mtxFriendLists);
     for(int i=0;i<_friendLists.size();i++)
     {
@@ -228,7 +233,6 @@ void CMainWindow::get_friend_info(const QModelIndex &index)
 {
 
     int irow=index.row();
-    int icolumn=index.column();
     int levelNum=index.data(Qt::UserRole+1).toInt();
     //一级标题，点击，展开，没有收缩功能
     if(levelNum<100)
@@ -236,15 +240,6 @@ void CMainWindow::get_friend_info(const QModelIndex &index)
         ui->TreeViewFriendList->expand(index);
         return;
     }
-//    //用于定位一级标题中二级标题的位置，发现若不分组，选的的行就是_friendLists[行]的对象，所以这里不需要
-//    else
-//    {
-//        QStandardItemModel *model=static_cast<QStandardItemModel*>(ui->TreeViewFriendList->model());
-//        QStandardItem *temp=model->item(static_cast<int>(levelNum/100)-1);
-//        QStandardItem *temp2=temp->child(irow,icolumn);
-//        qDebug()<<temp->text(); //一级标题
-//        qDebug()<<temp2->text(); //二级标题
-//    }
 
     CUser friendUser=_friendLists[irow];
     _myConversation->set_friend_label_info(friendUser,true);
