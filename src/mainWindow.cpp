@@ -39,10 +39,10 @@ CMainWindow::CMainWindow(QWidget *parent)
     loginDig.set_main_client_ptr(_mainClientPtr);
     loginDig.exec();
     std::shared_ptr<CLoginCmd> loginCmdPtr=loginDig.get_login_cmd_ptr();
-    loginCmdPtr->show_do_command_info();
+//    loginCmdPtr->show_do_command_info();
     _currentUser=loginCmdPtr->get_login_user();
     _friendLists=loginCmdPtr->get_friend_lists();
-    _notRecvMsgsLists=loginCmdPtr->get_not_recv_msg_lists();
+    _msgsPartAccountMap=loginCmdPtr->get_msg_part_account_map();
 
     //启动心跳发送线程
 //    _mainClientPtr->heart_thread_init(_currentUser);
@@ -97,18 +97,18 @@ void CMainWindow::thread_deal_recv_cmd()
     std::vector<std::list<std::shared_ptr<CmdBase>>::iterator> delIteratorLists;
     std::vector<std::list<std::shared_ptr<CmdBase>>::iterator>::iterator itDel;
     std::shared_ptr<CHeartRequestCmd> heartCmdPtr;
-    std::shared_ptr<CDataMsgCmd> dataMsgCmdPtr;
+    std::shared_ptr<CHeartMsgCmd> heartMsgCmdPtr;
 
     //对cmdPtrLists的互斥锁
     std::unique_lock<std::mutex> cmdPtrLock(mtx);
     cmdPtrLock.unlock();
 
-    //26秒处理一次
+    //5秒处理一次
     //只处理heartRequestCmd和dataMsgCmd
     //用户信息修改，需要等待是否修改成功，所以放在这里需要等比较久
     while(1)
     {
-        Sleep(3000);
+        Sleep(2000);
 
         cmdPtrLock.lock();
         for( itNow=cmdPtrLists.begin();itNow!=cmdPtrLists.end();itNow++)
@@ -129,25 +129,27 @@ void CMainWindow::thread_deal_recv_cmd()
                 std::unique_lock<std::mutex> friendListsLock(mtxFriendLists);
                 _friendLists=heartCmdPtr->get_friend_lists();
                 _requestUserLists=heartCmdPtr->get_friendship_request_lists();
+//                _msgsPartAccountMap=heartCmdPtr->get_msg_part_account_map();
                 friendListsLock.unlock();
 
                 user_friends_init();
-
             }
-            else if((*itNow)->_childCmdType==CmdBase::DTAT_MSG_CMD)
+            if((*itNow)->_childCmdType==CmdBase::HEART_MSG_CMD)
             {
                 delIteratorLists.push_back(itNow);
 
                 if((*itNow)->_childDoCommandReturn==false)
                 {
-                    qDebug()<<"[E]  recv datamsg cmd have a error";
+                    qDebug()<<"[E]  heart msg cmd return a error, pleace check";
                     continue;
                 }
-                qDebug()<<"recv data";
-                dataMsgCmdPtr=std::dynamic_pointer_cast<CDataMsgCmd>(*(itNow));
-                dataMsgCmdPtr->get_msg_data().print();
-
+                heartMsgCmdPtr =std::dynamic_pointer_cast<CHeartMsgCmd>(*(itNow));
+                std::unique_lock<std::mutex> friendListsLock(mtxMsgLists);
+                _msgsPartAccountMap=heartMsgCmdPtr->get_msg_part_account_map();
+                friendListsLock.unlock();
+                qDebug()<<"[I]  reset _msgsPartAccountMap is over";
             }
+
         }
         for(itDel=delIteratorLists.begin();itDel!=delIteratorLists.end();itDel++)
         {
@@ -159,7 +161,7 @@ void CMainWindow::thread_deal_recv_cmd()
 
         cmdPtrLock.unlock();
         //当好友列表和好友申请有变化是，更新treeView
-        Sleep(5000);
+        Sleep(3000);
     }
 }
 

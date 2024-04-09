@@ -60,7 +60,7 @@ private:
     //好友请求列表
     std::vector<CUser> _requestUserLists;
     //未读消息列表
-    std::vector<CMsg> _notRecvMsgsLists;
+    std::map<int,std::vector<CMsg>> _msgsPartAccountMap;
 
     std::vector<QAbstractItemModel*> _treeViewModelLists;
 };
