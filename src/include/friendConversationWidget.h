@@ -28,8 +28,10 @@ public:
 
 
     //设置好友的一些信息和是否在线情况
-    void set_friend_label_info(CUser &friendUser,bool isOnline);
+    void set_friend_label_info(CUser &friendUser,bool isOnline,std::map<int,std::vector<CMsg>> &msgsPartAccountMap);
 
+    //当有新消息过来时，增加一下新的消息
+    void show_new_msg(std::map<int,std::vector<CMsg>> &msgsPartAccountMap);
 private:
     Ui::CFriendConversationWidget *ui;
 

@@ -25,6 +25,7 @@ void CLoginDialog::user_verify()
     std::list<std::shared_ptr<CmdBase>> &cmdPtrLists=_mainClientPtr->get_cmd_ptr_lists();
     std::list<std::shared_ptr<CmdBase>>::iterator itNow;
     bool isWait=false,isSucceed=false;
+    int timeWaitNum=0;
 
     while(1)
     {
@@ -66,6 +67,14 @@ void CLoginDialog::user_verify()
             _loginCmdPtr =std::dynamic_pointer_cast<CLoginCmd>(*(itNow));
             cmdPtrLists.erase(itNow);
             close();
+            return;
+        }
+
+        //等待服务器返回太久后，直接退出。
+        ++timeWaitNum;
+        if(timeWaitNum>10000){
+            QMessageBox::critical(this,_Q_U("超时"),_Q_U("等待超时"));
+            ui->BtnOK->setEnabled(true);
             return;
         }
         //接收到了错误消息，也退出去，但窗体不关

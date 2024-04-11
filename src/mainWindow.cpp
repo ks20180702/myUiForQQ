@@ -16,7 +16,7 @@
 #include <QVariant>
 #include <QPushButton>
 #include <qDebug>
-
+#include <QTextCursor>
 
 CMainWindow::CMainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -25,6 +25,7 @@ CMainWindow::CMainWindow(QWidget *parent)
     ,_mainClientPtr(nullptr)
 {
     //这里三个注册我没弄懂，再信号和槽的部分，我好友没有传递非注册对象啊
+    qRegisterMetaType<QTextCursor>("QTextCursor");
     qRegisterMetaType<QList<QPersistentModelIndex>>("QList<QPersistentModelIndex>");
     qRegisterMetaType<QVector<int>>("QVector<int>");
     qRegisterMetaType<QAbstractItemModel::LayoutChangeHint>("QAbstractItemModel::LayoutChangeHint");
@@ -45,7 +46,7 @@ CMainWindow::CMainWindow(QWidget *parent)
     _msgsPartAccountMap=loginCmdPtr->get_msg_part_account_map();
 
     //启动心跳发送线程
-//    _mainClientPtr->heart_thread_init(_currentUser);
+    _mainClientPtr->heart_thread_init(_currentUser);
 
     //启动指令处理线程(将接收到的指令数据更新到对应对象中)
     deal_cmd_thread_init();
@@ -103,7 +104,7 @@ void CMainWindow::thread_deal_recv_cmd()
     std::unique_lock<std::mutex> cmdPtrLock(mtx);
     cmdPtrLock.unlock();
 
-    //5秒处理一次
+    //10秒处理一次
     //只处理heartRequestCmd和dataMsgCmd
     //用户信息修改，需要等待是否修改成功，所以放在这里需要等比较久
     while(1)
@@ -144,9 +145,13 @@ void CMainWindow::thread_deal_recv_cmd()
                     continue;
                 }
                 heartMsgCmdPtr =std::dynamic_pointer_cast<CHeartMsgCmd>(*(itNow));
-                std::unique_lock<std::mutex> friendListsLock(mtxMsgLists);
+                std::unique_lock<std::mutex> msgListsLock(mtxMsgLists);
                 _msgsPartAccountMap=heartMsgCmdPtr->get_msg_part_account_map();
-                friendListsLock.unlock();
+                msgListsLock.unlock();
+
+                _myConversation->show_new_msg(_msgsPartAccountMap);
+                user_friends_init();
+
                 qDebug()<<"[I]  reset _msgsPartAccountMap is over";
             }
 
@@ -192,7 +197,6 @@ int CMainWindow::user_friends_init()
 
         //删除所有子类数据和内存，重新赋值
         friendRowLvOne=modelFriendInfo->item(0);
-        qDebug()<<friendRowLvOne->text();
         friendRowLvOne->removeRows(0,friendRowLvOne->rowCount());
         for(int i=0;i<friendRowLvOne->rowCount();i++)
         {
@@ -208,7 +212,16 @@ int CMainWindow::user_friends_init()
     std::unique_lock<std::mutex> friendListsLock(mtxFriendLists);
     for(int i=0;i<_friendLists.size();i++)
     {
-        QStandardItem *friendRow=new QStandardItem(_Q(_friendLists[i].get_name()));
+        std::map<int,std::vector<CMsg>>::iterator itUserMsg;
+        //加锁，防止find的时候，_msgsPartAccountMap被修改
+        std::unique_lock<std::mutex> msgListsLock(mtxMsgLists);
+        itUserMsg=_msgsPartAccountMap.find(_friendLists[i].get_id());
+        QString msgNum=(itUserMsg==_msgsPartAccountMap.end())?
+                    QString(""):(QString("(")+QString::number((itUserMsg->second).size())+QString(")"));
+        msgListsLock.unlock();
+
+        QString userInfoShow=QString(_friendLists[i].get_name())+QString(" ")+msgNum;
+        QStandardItem *friendRow=new QStandardItem(userInfoShow);
         friendRowLvOne->appendRow(friendRow);
         //好友从100开始加，家人从200开始，类推(也可从1000开始)，分组暂时不想弄
         friendRow->setData(100+i);
@@ -244,8 +257,9 @@ void CMainWindow::get_friend_info(const QModelIndex &index)
     }
 
     CUser friendUser=_friendLists[irow];
-    _myConversation->set_friend_label_info(friendUser,true);
     _myConversation->show();
+    _myConversation->set_friend_label_info(friendUser,true,_msgsPartAccountMap);
+
 }
 CMainWindow::~CMainWindow()
 {
